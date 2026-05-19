@@ -19,9 +19,7 @@ app.add_middleware(
 )
 
 
-@app.get("/health", tags=["Health"])
+@app.get("/health", summary="Health check")
 def health_check():
-    """
-    Verify that the API is running.
-    """
-    return {"status": "ok"}
+    """Simple endpoint to verify the service is running."""
+    return {"status": "ok", "service": "Idempotency Gateway"}
