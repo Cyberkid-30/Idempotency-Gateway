@@ -1,6 +1,7 @@
 import hashlib
 import json
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from sqlalchemy import String, Integer, Text, DateTime, Enum
 from sqlalchemy.orm import Mapped, mapped_column
@@ -17,7 +18,9 @@ class RequestStatus(str, enum.Enum):
 class IdempotencyRecord(Base):
     __tablename__ = "idempotency_records"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[str] = mapped_column(
+        String(255), primary_key=True, index=True, default=lambda: str(uuid4())
+    )
     idempotency_key: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False
     )
