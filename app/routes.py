@@ -56,6 +56,8 @@ def process_payment(
         )
     except ConflictError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     response.status_code = status_code
     if cache_hit:

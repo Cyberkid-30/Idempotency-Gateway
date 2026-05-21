@@ -61,11 +61,21 @@ class IdempotencyService:
         except IntegrityError:
             db.rollback()
             # Another request won the race and inserted first — fetch it
-            existing = (
-                db.query(IdempotencyRecord)
-                .filter(IdempotencyRecord.idempotency_key == idempotency_key)
-                .first()
-            )
+            existing = None
+            for _ in range(3):
+                existing = (
+                    db.query(IdempotencyRecord)
+                    .filter(IdempotencyRecord.idempotency_key == idempotency_key)
+                    .first()
+                )
+                if existing is not None:
+                    break
+                time.sleep(0.1)
+            if existing is None:
+                # Extremely rare race or replication delay; surface a clear error
+                raise RuntimeError(
+                    "Idempotency record not found after unique constraint conflict."
+                )
             if existing and existing.request_body_hash != body_hash:
                 raise ConflictError(
                     "Idempotency key already used for a different request body."
@@ -126,9 +136,13 @@ class IdempotencyService:
 
         record, is_new = self.get_or_create_record(db, idempotency_key, body_hash)
 
+        if record is None:
+            # Defensive guard: should never happen unless the DB is inconsistent
+            raise RuntimeError("Idempotency record is missing.")
+
         if not is_new:
             # Existing COMPLETED record — replay cached response
-            if record.status == RequestStatus.COMPLETED:  # type: ignore
+            if record.status == RequestStatus.COMPLETED:
                 return (
                     json.loads(record.response_body),  # type: ignore
                     record.response_status_code,  # type: ignore
@@ -139,7 +153,7 @@ class IdempotencyService:
             # Wait briefly and re-query
             time.sleep(2)
             db.refresh(record)
-            if record.status == RequestStatus.COMPLETED:  # type: ignore
+            if record.status == RequestStatus.COMPLETED:
                 return (
                     json.loads(record.response_body),  # type: ignore
                     record.response_status_code,  # type: ignore
@@ -166,7 +180,7 @@ class IdempotencyService:
             }
             status_code = 201
 
-            self.complete_record(db, record, response_body, status_code)  # type: ignore
+            self.complete_record(db, record, response_body, status_code)
             return response_body, status_code, False
 
         finally:
