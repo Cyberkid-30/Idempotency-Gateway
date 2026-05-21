@@ -1,4 +1,15 @@
-.env
+# Virtual environments
 .venv
+venv
+env
+
+# Environment variables
+.env
+
+# Python cache files
 __pycache__/
 *.pyc
+.pytest_cache/
+
+# Local database files
+*.db
