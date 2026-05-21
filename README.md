@@ -8,44 +8,38 @@ A production-grade payment processing API that guarantees **exactly-once executi
 
 ### Sequence Diagram
 
-```
-Client                  API Gateway                  PostgreSQL
-  |                          |                             |
-  |-- POST /process-payment ->|                             |
-  |   Idempotency-Key: K1    |                             |
-  |   { amount: 100 }        |                             |
-  |                          |-- SELECT WHERE key=K1 ----->|
-  |                          |<-- (no record found) -------|
-  |                          |                             |
-  |                          |-- INSERT key=K1,            |
-  |                          |   status=IN_FLIGHT -------->|
-  |                          |                             |
-  |                          |   [simulate 2s processing]  |
-  |                          |                             |
-  |                          |-- UPDATE status=COMPLETED ->|
-  |                          |   response_body stored      |
-  |<-- 201 Created ----------|                             |
-  |   { "Charged 100 GHS" }  |                             |
-  |                          |                             |
-  |                          |                             |
-  |-- POST /process-payment ->|  (retry / duplicate)       |
-  |   Idempotency-Key: K1    |                             |
-  |   { amount: 100 }        |                             |
-  |                          |-- SELECT WHERE key=K1 ----->|
-  |                          |<-- (COMPLETED record found) |
-  |<-- 201 Created ----------|                             |
-  |   X-Cache-Hit: true      |                             |
-  |   { "Charged 100 GHS" }  |                             |
-  |                          |                             |
-  |                          |                             |
-  |-- POST /process-payment ->|  (fraud attempt)           |
-  |   Idempotency-Key: K1    |                             |
-  |   { amount: 500 }        |                             |
-  |                          |-- SELECT WHERE key=K1 ----->|
-  |                          |<-- (hash mismatch!) --------|
-  |<-- 409 Conflict ---------|                             |
-  |   "Key used for          |                             |
-  |    different body"       |                             |
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as API Gateway
+    participant DB as PostgreSQL
+
+    Client->>API: POST /process-payment<br/>Idempotency-Key: K1<br/>{ amount: 100 }
+
+    API->>DB: SELECT WHERE key=K1
+    DB-->>API: No record found
+
+    API->>DB: INSERT key=K1<br/>status=IN_FLIGHT
+
+    Note over API: Simulate 2s processing
+
+    API->>DB: UPDATE status=COMPLETED<br/>response_body stored
+
+    API-->>Client: 201 Created<br/>{ "Charged 100 GHS" }
+
+    Client->>API: Retry POST /process-payment<br/>Idempotency-Key: K1
+
+    API->>DB: SELECT WHERE key=K1
+    DB-->>API: COMPLETED record found
+
+    API-->>Client: 201 Created<br/>X-Cache-Hit: true<br/>{ "Charged 100 GHS" }
+
+    Client->>API: Fraud attempt<br/>Idempotency-Key: K1<br/>{ amount: 500 }
+
+    API->>DB: SELECT WHERE key=K1
+    DB-->>API: Hash mismatch
+
+    API-->>Client: 409 Conflict<br/>Key used for different body
 ```
 
 ---
@@ -298,7 +292,7 @@ The request body is hashed using SHA-256 on its **canonical JSON form** (keys so
 ## Project Structure
 
 ```
-idempotency-gateway/
+Idempotency-Gateway/
 ├── app/
 │   ├── __init__.py
 │   ├── config.py        # Pydantic settings (reads .env)
@@ -310,7 +304,7 @@ idempotency-gateway/
 │   └── services.py      # Core idempotency + race-condition logic
 ├── tests/
 │   └── test_payments.py # Pytest test suite (9 tests)
-├── .env.example
+├── .env
 ├── alembic.ini
 ├── main.py              # Entry point (uvicorn)
 ├── requirements.txt
