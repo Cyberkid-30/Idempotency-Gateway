@@ -36,7 +36,13 @@ app.add_middleware(
 app.include_router(payments_router, prefix="/api/v1", tags=["Payments"])
 
 
+@app.get("/", summary="Welcome endpoint")
+def welcome():
+    """A simple welcome endpoint to verify the API is up and running."""
+    return {"message": "Welcome to the Idempotency Gateway API!"}
+
+
 @app.get("/api/v1/health", summary="Health check")
 def health_check():
-    """Simple endpoint to verify the service is running."""
+    """A simple health check endpoint to verify the API is functioning correctly."""
     return {"status": "ok", "service": "Idempotency Gateway"}
