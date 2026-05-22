@@ -277,7 +277,7 @@ For two requests hitting the **same server instance** simultaneously, a process-
 
 ### 4. Deterministic Body Hashing
 
-The request body is hashed using SHA-256 on its **canonical JSON form** (keys sorted, no whitespace). This ensures `{"amount":100,"currency":"GHS"}` and `{"currency":"GHS","amount":100}` are treated as identical, preventing spurious 409 errors due to key ordering differences.
+The request body is hashed using SHA-256 on its **canonical JSON form** (keys sorted, no whitespace). This ensures `{"amount":100,"currency":"GHS"}` and `{"currency":"GHS","amount":100}` are treated as identical, preventing false 409 errors due to key ordering differences.
 
 ---
 
