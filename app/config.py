@@ -11,7 +11,6 @@ class Settings:
     _default_sqlite_url = f"sqlite:///{_root_dir}/idempotency_db.db"
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", _default_sqlite_url)
-    IDEMPOTENCY_KEY_TTL_HOURS: int | str = os.getenv("IDEMPOTENCY_KEY_TTL_HOURS", 24)
 
 
 settings = Settings()
